@@ -1,0 +1,27 @@
+# SonicBeam Lab 0.1
+
+Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
+
+## Test flow
+Open the HTTPS Vercel site on two devices. Permit microphone in Safari/Chrome. Disable Bluetooth, keep foreground. Mark A transmitter, B receiver. Match frequency range, manually record source system volume and gain on receiver. At B start recording; wait 2-second ambient reference, then sweep at A. Stop recording B after sweep. Repeat at other gain/system-volume settings, same geometry. Swap roles to characterize the reverse path. Export/import JSON to combine results.
+
+The receiver estimates per-frequency signal relative to the 2-second ambient median FFT reference. A source sweep uses 250 Hz spacing, 0.7-second tone, 0.25-second silence, and 15 ms ramps. It records the median of the strongest eight observed frames per target frequency; this is a practical scan summary, not calibrated SPL or a guaranteed capacity estimate. Continuous runs of >=4 bins at >=10 dB above ambient and >-100 FFT dBFS suggest candidate bands. External interference can contaminate estimates. Repeat with the source off as a control. Results describe the whole directional link, not isolated loudspeaker/microphone response. Sample rate determines Nyquist guard; hardware filtering can impose a lower limit.
+
+## Acoustic protocol
+Baseline noncoherent 4-FSK, 4 tones at band quartile centers, selectable 10/20/40/80 ms symbols (200/100/50/25 raw bit/s). All settings manually match. Preamble: alternating 0/3 (16 symbols) plus 8-symbol sync. Header: type, 16-bit random session, sequence, length. Up to 96 payload bytes and CRC16-CCITT-FALSE. AudioWorklet receiver correlates four Hann-windowed tones, searches preamble timing, then checks CRC. Transmit suppresses own receive decoder; microphones are never looped into audible output.
+
+Half-duplex stop-and-wait, ACK contains packet type and CRC plus same session/seq. 420 ms receiver turnaround, 220 ms local transmit tail, 400 ms sender post-ACK guard; maximum three attempts total. Type 1 benchmark, 2 ACK, 3 transfer metadata, 4 data, 5 finish. Metadata carries size and SHA-256; payload chunks are 32 bytes. Finish is ACKed only after complete SHA-256 verification. Retry duplicates are ACKed without duplicate processing. Files capped at 4096 bytes; receiver uses a safe generated filename. No encryption or identity authentication.
+
+Benchmark goodput = acoustically ACKed unique CRC-valid payload bytes * 8 / full wall-clock run including all attempts and guards. File goodput is zero unless final SHA-256 confirmation arrives; otherwise whole file bytes / full transfer duration. Do not compare this to raw rate or infer Shannon capacity from FFT SNR. Best observed rate requires multiple physical repeated tests; no claim of maximum hardware capability.
+
+## Validation
+`npm test` runs modem and protocol checks. `node tests.mjs` verifies CRC reference vector, 44.1/48 kHz decoding, all selectable symbol rates, noise, unaligned starts, slight clock mismatch, max payload, corrupt-frame rejection, silence. `node protocol-test.mjs` additionally checks a dropped ACK/retry, duplicate handling, benchmark accounting and complete metadata/chunk/SHA-256 transfer across two application instances with synthesized audio. These are synthetic tests, not a two-phone end-to-end performance claim. No managed browser QA capability was available during creation. Real iOS/Android permission handling, audio routing, received levels, and reliable acoustic throughput need physical device validation. Backgrounding stops audio; wake lock is best effort.
+
+## Next experiments
+Gather directional results and goodput at matched range/rate settings, three repeats per condition. Then select a control band proven both ways; add negotiated rates, FEC, interleaving, timing tracking and OFDM only if evidence supports higher net throughput. A high-frequency output can create audible artifacts; ultrasound audibility and sound pressure are not certified by this app. Start at low physical volume without headphones and stop if uncomfortable.
+
+References: https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackSettings ; https://developer.mozilla.org/en-US/docs/Web/API/Media_Capture_and_Streams_API/Constraints ; https://www.mdpi.com/1424-8220/22/19/7345
+
+## Vercel deployment
+
+GitHub repository: `solorecord81993/socicbeam`. Vercel project: `socicbeem` (team `saijai1`). These names intentionally match the supplied project URLs. `vercel.json` explicitly selects static hosting and the `dist` output directory. `npm run build` validates JavaScript and all shipped assets; no framework or runtime dependencies are required. Production deploys follow pushes to `main` through the configured Git integration.
