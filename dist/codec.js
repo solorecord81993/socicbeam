@@ -1,0 +1,18 @@
+// Audio-only 4-FSK laboratory modem. One peer transmits at a time.
+export const PRE = [...Array.from({length:16},(_,i)=>i%2?3:0),0,1,3,2,3,1,0,2];
+export function crc16(bytes){let c=65535;for(const b of bytes){c^=b<<8;for(let j=0;j<8;j++)c=c&32768?(c<<1)^0x1021:c<<1;c&=65535;}return c;}
+export function frame(type,session,seq,payload=new Uint8Array()) {if(payload.length>96)throw Error('Payload too large');const b=new Uint8Array(7+payload.length);b.set([type,session>>8,session&255,seq,payload.length]);b.set(payload,5);const c=crc16(b.subarray(0,-2));b[b.length-2]=c>>8;b[b.length-1]=c&255;return b;}
+export function symbols(bytes){return [...PRE,...Array.from(bytes).flatMap(b=>[b>>6,(b>>4)&3,(b>>2)&3,b&3])];}
+export function frequencies(low,high){return [0,1,2,3].map(i=>low+(high-low)*(i+0.5)/4);}
+export function encode(bytes,sr,ms,low,high,gain=.1){const ss=symbols(bytes),n=Math.round(sr*ms/1000),out=new Float32Array(n*ss.length),freq=frequencies(low,high);let phase=0;const edge=Math.max(1,Math.round(sr*.001));for(let k=0;k<ss.length;k++)for(let i=0;i<n;i++){const e=Math.min(1,i/edge,(n-1-i)/edge);out[k*n+i]=Math.sin(phase)*gain*e;phase=(phase+2*Math.PI*freq[ss[k]]/sr)%(2*Math.PI);}return out;}
+export class Decoder {
+ constructor(sr,ms,low,high,onFrame,onBad=()=>{}){this.sr=sr;this.n=Math.round(sr*ms/1000);this.freq=frequencies(low,high);this.onFrame=onFrame;this.onBad=onBad;this.cap=Math.ceil(sr*40);this.buf=new Float32Array(this.cap);this.end=0;this.scan=0;this.pending=null;this.step=Math.max(1,Math.floor(this.n/4));const length=Math.floor(this.n*.64);this.offset=Math.floor(this.n*.18);this.kernels=this.freq.map(f=>{const c=new Float32Array(length),s=new Float32Array(length);for(let i=0;i<length;i++){const w=.5-.5*Math.cos(2*Math.PI*i/(length-1));c[i]=Math.cos(2*Math.PI*f*i/sr)*w;s[i]=Math.sin(2*Math.PI*f*i/sr)*w;}return {c,s};});}
+ reset(){this.scan=this.end;this.pending=null;}
+ classify(pos){let best=0,total=0,max=0;for(let k=0;k<4;k++){const {c,s}=this.kernels[k];let re=0,im=0;for(let j=0;j<c.length;j++){const v=this.buf[(pos+this.offset+j)%this.cap];re+=v*c[j];im+=v*s[j];}const p=re*re+im*im;total+=p;if(p>max){max=p;best=k;}}return {symbol:best,quality:max/(total+1e-20),power:max};}
+ preamble(pos){let q=0;for(let i=0;i<PRE.length;i++){const c=this.classify(pos+i*this.n);if(c.symbol!==PRE[i]||c.quality<.48||c.power<1e-10)return -1;q+=c.quality;}return q;}
+ byte(pos){let b=0;for(let i=0;i<4;i++)b=(b<<2)|this.classify(pos+i*this.n).symbol;return b;}
+ push(input){for(const v of input)this.buf[(this.end++)%this.cap]=v;this.scan=Math.max(this.scan,this.end-this.cap+this.n);while(true){if(this.pending!==null){const p=this.pending,start=p+PRE.length*this.n;if(this.end<start+20*this.n)return;const len=this.byte(start+16*this.n);if(len>96){this.onBad();this.pending=null;this.scan=p+this.n;continue;}const finish=start+(len+7)*4*this.n;if(this.end<finish)return;const b=new Uint8Array(len+7);for(let i=0;i<b.length;i++)b[i]=this.byte(start+i*4*this.n);const c=crc16(b.subarray(0,-2));if(c===(b.at(-2)<<8|b.at(-1))){this.onFrame({type:b[0],session:b[1]<<8|b[2],seq:b[3],payload:Array.from(b.subarray(5,-2)),crc:c,endSample:finish});this.scan=finish;}else{this.onBad();this.scan=p+this.n;}this.pending=null;continue;}
+ if(this.end<this.scan+(PRE.length+1)*this.n)return;
+ if(this.preamble(this.scan)>=0){let best=this.scan,score=-1;for(let p=Math.max(0,this.scan-Math.floor(this.n/2));p<=this.scan+Math.floor(this.n/2);p+=Math.max(1,Math.floor(this.n/16))){const q=this.preamble(p);if(q>score){score=q;best=p;}}this.pending=best;continue;}this.scan+=this.step;}
+ }
+}

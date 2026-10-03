@@ -1,4 +1,4 @@
-# SonicBeam Lab 0.1
+# SonicBeam Lab 0.2
 
 Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
 
@@ -25,3 +25,11 @@ References: https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackSettings 
 ## Vercel deployment
 
 GitHub repository: `solorecord81993/socicbeam`. Vercel project: `socicbeem` (team `saijai1`). These names intentionally match the supplied project URLs. `vercel.json` explicitly selects static hosting and the `dist` output directory. `npm run build` validates JavaScript and all shipped assets; no framework or runtime dependencies are required. Production deploys follow pushes to `main` through the configured Git integration.
+
+## Goodput-frequency survey
+
+The survey plots X = test-band midpoint (kHz), Y = mean verified payload goodput (bit/s). Each window is 750/1000 Hz wide, moving 250/500 Hz; the last window covers the upper edge. The default scan is 20 kHz to min(23 kHz, both peers Nyquist minus 200 Hz), rounded down to 250 Hz. 18 kHz needs explicit audible-band consent on both peers. Two 32-byte packets per round; 1 or 3 rounds per window. Error bars show observed min/max (not confidence intervals). Unmeasured windows are null; failed measured rounds are 0. Results retain direction, distance, gain, manually entered sender volume and raw bit rate.
+
+The existing control band must support bidirectional ACK before scan. Type 8 queries peer sample rate and accepted minimum frequency. ACK adds sample rate and permitted minimum. Type 6 negotiates a temporary band and finite lease over control audio; peers then switch after ACK. Type 7 finishes the lease, acknowledges at the test band, and returns to control. Receiver lease timeout restores control after loss; sender waits out the lease when finish is unconfirmed. Scan goodput includes payload framing/ACK/retry time, but excludes per-window control setup/return. The modulation speed remains fixed across a survey; rerun at other speeds/gains for comparison. No maximum achievable capacity is claimed.
+
+`protocol-test.mjs` now also exercises a complete five-window scan with configuration-aware acoustic decoding, both-peer retuning, return-to-control and null-vs-zero distinction. Its timers are accelerated for synthetic protocol validation only; application timers and measured goodput are real wall-clock values.

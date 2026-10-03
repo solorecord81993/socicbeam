@@ -1,0 +1,9 @@
+{
+  "name": "sonicbeam-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests.mjs && node protocol-test.mjs",
+    "build": "node build.mjs"
+  }
+}
