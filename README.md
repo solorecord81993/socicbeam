@@ -1,4 +1,4 @@
-# SonicBeam Lab 0.6
+# SonicBeam Lab 0.7
 
 Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
 
@@ -61,3 +61,9 @@ New peers advertise compact-control support in the ACK. The 49-byte JSON band co
 Survey payload rates are selectable at 25/50/100/200 raw bit/s, default 100, while quick-start control remains 50 bit/s. The rate is negotiated in the command, so the receiver needs no matching manual speed selection. Older peers use the existing control bitrate for the survey. Longer command/retry/ACK-copy times are included in lease recovery budgets. Completed survey measurements record whether the receiver acknowledged the final completion message.
 
 Receive rate is unique accepted payload bits divided by total elapsed receiver test time from the control query, including control/waits. It differs from the sender per-window ACK-confirmed goodput chart. Control packets and retries do not increase payload counts. Receiver status explicitly distinguishes Receiving, Complete, Interrupted and Stopped; final rates freeze at completion. An idle link says no new valid packets after 45 seconds rather than falsely declaring completion. Lease expiry and a sender abort message mark interruption. Physical validation on the reported iPhone pair is still required.
+
+## Control-band ACK replies (0.7)
+
+Protocol version 2 negotiates survey replies on the proven control band and symbol duration, while payloads sweep the selected frequency and raw rate. A ten-byte band command with marker 67 opts into this behavior; marker 66 and JSON commands retain the original same-band replies for older senders. The sender configures its listening decoder independently of payload encoding. The receiver encodes ACKs on control without changing its payload listening band.
+
+Timeouts include receiver turnaround, every requested ACK copy, playback tails, the copy gap and a processing margin. A lost first ACK therefore leaves time to decode the second before a retry mutes the microphone. Intentional copies are logged as ACK_REPEAT. Control logs distinguish query, complete and abort; exported senderSurvey retains per-band results and the final outcome even when the bounded event history drops early events. Tests cover a second ACK arriving after the previous timeout, different transmit/ACK bands and rates, and completion. Physical phone goodput still requires measuring both devices.
