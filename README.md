@@ -38,10 +38,12 @@ The existing control band must support bidirectional ACK before scan. Type 8 que
 
 The home screen has a Receive / Send segmented control and one primary action. Receiver: select Receive and press Start receiving once to open the microphone and wait. Sender: select Send and press Start test once to open audio, negotiate with the receiver and run the complete survey. Both quick actions normalize the control band to 20–21 kHz and 40 ms symbols, compatible with 44.1/48 kHz sampling. Gain and survey options remain adjustable inside collapsed advanced tools. Graphs appear on the sender; receiver status explains the next action.
 
-Microphone refusal and absent-peer failures appear inline with a retry button. Opening audio locks both role selectors and the primary action; receiver-ready state disables repeat starts. Stop resets the visible flow. A completion message (type 8, one-byte payload 1, sequence 255) tells the receiver when the whole survey is finished. Detailed metadata, spectrum tools, manual controls and transfers remain available under the advanced disclosure.
+Microphone refusal and absent-peer failures appear inline with a retry button. Opening audio locks both role selectors and the primary action; the primary button switches to Stop receiving or Stop sending while active. Stop resets the visible flow. A completion message (type 8, one-byte payload 1, sequence 255) tells the receiver when the whole survey is finished. Detailed metadata, spectrum tools, manual controls and transfers remain available under the advanced disclosure.
 
 The protocol harness additionally verifies one-click receiver setup, one-click sender survey, completion feedback at both devices, microphone denial and absent-peer retry. Physical phone audio performance still needs device testing.
 
 ## Reference UI refresh (0.4)
 
 The mobile layout follows the supplied SonicBeam mockup: a warm white background, centered waveform wordmark, a large teal start button with role-specific SVG icon, a receiver phone-placement illustration, and a sender goodput-by-frequency card. All built-in interface labels and runtime messages are English. Detailed controls stay inside Advanced settings. Stop appears while audio is opening or active. Empty charts show axes without simulated data; measured goodput retains the same acoustic protocol and statistics. The layout uses a 480 px maximum width and adapts to small phone screens.
+
+The main button toggles start/stop for both roles. Stopping cancels the active audio source, ACK wait and microphone session. While an asynchronous operation finishes cancelling, Stopping… prevents overlapping restarts; then the same button is ready to start again. Completed measurements remain available.

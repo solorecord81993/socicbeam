@@ -23,8 +23,21 @@ console.log('Frequency scan checks passed: all five planned windows negotiate ov
 const sender=peer('tx',false),listener=peer('rx',false);let senderOpens=0,listenerOpens=0;
 sender.setStart(async()=>{senderOpens++;sender.setup();});listener.setStart(async()=>{listenerOpens++;listener.setup();});
 sender.setSend(async bytes=>deliver(bytes,listener,sender));listener.setSend(async bytes=>deliver(bytes,sender,listener));
-await listener.quickAction();assert.equal(listenerOpens,1);assert.equal(listener.ui('quickTitle').textContent,'Ready to receive');assert.equal(listener.ui('quickStart').disabled,true);assert.equal(listener.config().high,21000);assert.equal(listener.config().ms,40);
+await listener.quickAction();assert.equal(listenerOpens,1);assert.equal(listener.ui('quickTitle').textContent,'Ready to receive');assert.equal(listener.ui('quickStart').disabled,false);assert.equal(listener.ui('quickButtonText').textContent,'Stop receiving');assert.equal(listener.config().high,21000);assert.equal(listener.config().ms,40);
 await sender.quickAction();assert.equal(senderOpens,1);assert.equal(sender.scanResult().complete,true);assert.equal(sender.ui('quickTitle').textContent,'Test complete');assert.equal(listener.ui('quickTitle').textContent,'Test received');assert.equal(sender.ui('quickStart').disabled,false);assert.equal(sender.ui('quickButtonText').textContent,'Test again');
 const denied=peer('rx',false);denied.setStart(async()=>{throw Object.assign(new Error('permission denied'),{name:'NotAllowedError'});});await denied.quickAction();assert.equal(denied.ui('quickTitle').textContent,'Microphone permission needed');assert.equal(denied.ui('quickStart').disabled,false);assert.equal(denied.ui('quickButtonText').textContent,'Try again');
 const alone=peer('tx',false);alone.setStart(async()=>alone.setup());alone.setSend(async()=>{});await alone.quickAction();assert.equal(alone.ui('quickTitle').textContent,'Receiver not found');assert.equal(alone.ui('quickStart').disabled,false);
 console.log('Quick-start checks passed: receiver one press opens mic and waits; sender one press opens mic and scans all bands; completion reaches both devices; permission/absent-peer errors show an enabled retry action.');
+
+// Toggle the same primary button while receiving, sending, and opening audio.
+await listener.quickAction();assert.equal(listener.ui('quickTitle').textContent,'Stopped');assert.equal(listener.ui('quickButtonText').textContent,'Start receiving');assert.equal(listener.ui('quickStart').disabled,false);
+await listener.quickAction();assert.equal(listenerOpens,2);assert.equal(listener.ui('quickButtonText').textContent,'Stop receiving');
+const interrupted=peer('tx',false);interrupted.setStart(async()=>interrupted.setup());let enterSend;const entered=new Promise(resolve=>enterSend=resolve);let releaseSend;const sending=new Promise(resolve=>releaseSend=resolve);
+interrupted.setSend(async()=>{enterSend();await sending;});const running=interrupted.quickAction();await entered;
+assert.equal(interrupted.ui('quickStart').disabled,false);assert.equal(interrupted.ui('quickButtonText').textContent,'Stop sending');
+await interrupted.quickAction();assert.equal(interrupted.ui('quickTitle').textContent,'Stopped');assert.equal(interrupted.ui('quickStart').disabled,true);releaseSend();await running;
+assert.equal(interrupted.ui('quickStart').disabled,false);assert.equal(interrupted.ui('quickButtonText').textContent,'Start test');assert.equal(interrupted.ui('quickTitle').textContent,'Stopped');assert.equal(interrupted.ui('quickProgress').hidden,true);
+interrupted.chooseQuickRole('rx');interrupted.setStart(async()=>interrupted.setup());await interrupted.quickAction();assert.equal(interrupted.ui('quickButtonText').textContent,'Stop receiving');await interrupted.quickAction();
+const opening=peer('rx',false);let releaseOpen;opening.setStart(()=>new Promise(resolve=>releaseOpen=resolve));const pendingOpen=opening.quickAction();assert.equal(opening.ui('quickButtonText').textContent,'Stop receiving');await opening.quickAction();releaseOpen();await pendingOpen;
+assert.equal(opening.ui('quickTitle').textContent,'Stopped');assert.equal(opening.ui('quickButtonText').textContent,'Start receiving');assert.equal(opening.ui('quickStart').disabled,false);
+console.log('Start/stop toggle checks passed: receiver stop/restart, sender interruption during transmit, no stale completion or progress, and cancellation during microphone opening.');
