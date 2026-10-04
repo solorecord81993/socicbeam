@@ -1,4 +1,4 @@
-# SonicBeam Lab 0.5
+# SonicBeam Lab 0.6
 
 Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
 
@@ -53,3 +53,11 @@ The main button toggles start/stop for both roles. Stopping cancels the active a
 After starting Receive, the placement guide becomes a live Received data card: last CRC-valid packet type/sequence/length, valid packet count, unique accepted payload bytes, locally played ACK count, ACK queue/play/error status, microphone input level, and current-band FFT peak. Completed text/file content is also visible here. ACK played confirms local playback only; compare the sender ACK_MATCHED event to verify the return path.
 
 Diagnostics is available on both roles with Copy log, Download log and Clear. It logs decoder preambles and CRC/length failures, ignored/duplicate packets, ACK attempts/playback errors, sender retries/timeouts and matching, sample rate, requested/current band, microphone processing settings and audio lifecycle errors. The worklet emits microphone telemetry once a second; logs retain the latest 250 events locally and display the latest 80. Exports include both current counters and timestamped events with page-session identifiers. No raw audio or message/file contents are stored in diagnostic events. Physical two-device failures still require comparing both devices’ reports.
+
+## Compact control, receive rate and completion (0.6)
+
+New peers advertise compact-control support in the ACK. The 49-byte JSON band command becomes a 10-byte binary record (marker, low/high frequency, symbol duration, lease milliseconds). Receivers still accept older JSON commands. Upgraded control requests explicitly ask for two CRC-protected ACK copies. The sender stays on its current band through the copy window; the receiver retunes only after both copies play. Payload ACKs remain single-copy. If a local ACK playback fails, a duplicate command can retry the pending transition. A missing control ACK still uses a conservative lease recovery wait before aborting; this is not a guarantee against all acoustic losses.
+
+Survey payload rates are selectable at 25/50/100/200 raw bit/s, default 100, while quick-start control remains 50 bit/s. The rate is negotiated in the command, so the receiver needs no matching manual speed selection. Older peers use the existing control bitrate for the survey. Longer command/retry/ACK-copy times are included in lease recovery budgets. Completed survey measurements record whether the receiver acknowledged the final completion message.
+
+Receive rate is unique accepted payload bits divided by total elapsed receiver test time from the control query, including control/waits. It differs from the sender per-window ACK-confirmed goodput chart. Control packets and retries do not increase payload counts. Receiver status explicitly distinguishes Receiving, Complete, Interrupted and Stopped; final rates freeze at completion. An idle link says no new valid packets after 45 seconds rather than falsely declaring completion. Lease expiry and a sender abort message mark interruption. Physical validation on the reported iPhone pair is still required.
