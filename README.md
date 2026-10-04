@@ -1,4 +1,4 @@
-# SonicBeam Lab 0.2
+# SonicBeam Lab 0.3
 
 Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
 
@@ -33,3 +33,11 @@ The survey plots X = test-band midpoint (kHz), Y = mean verified payload goodput
 The existing control band must support bidirectional ACK before scan. Type 8 queries peer sample rate and accepted minimum frequency. ACK adds sample rate and permitted minimum. Type 6 negotiates a temporary band and finite lease over control audio; peers then switch after ACK. Type 7 finishes the lease, acknowledges at the test band, and returns to control. Receiver lease timeout restores control after loss; sender waits out the lease when finish is unconfirmed. Scan goodput includes payload framing/ACK/retry time, but excludes per-window control setup/return. The modulation speed remains fixed across a survey; rerun at other speeds/gains for comparison. No maximum achievable capacity is claimed.
 
 `protocol-test.mjs` now also exercises a complete five-window scan with configuration-aware acoustic decoding, both-peer retuning, return-to-control and null-vs-zero distinction. Its timers are accelerated for synthetic protocol validation only; application timers and measured goodput are real wall-clock values.
+
+## Simple two-device interface
+
+The home screen has two role cards and one primary action. Receiver: select เครื่องรับ and press เริ่มรับ once to open the microphone and wait. Sender: select เครื่องส่ง and press เริ่มทดสอบ once to open audio, negotiate with the receiver and run the complete survey. Both quick actions normalize the control band to 20–21 kHz and 40 ms symbols, compatible with 44.1/48 kHz sampling. Gain and survey options remain adjustable inside collapsed advanced tools. Graphs appear on the sender; receiver status explains the next action.
+
+Microphone refusal and absent-peer failures appear inline with a retry button. Opening audio locks both role selectors and the primary action; receiver-ready state disables repeat starts. Stop resets the visible flow. A completion message (type 8, one-byte payload 1, sequence 255) tells the receiver when the whole survey is finished. Detailed metadata, spectrum tools, manual controls and transfers remain available under the advanced disclosure.
+
+The protocol harness additionally verifies one-click receiver setup, one-click sender survey, completion feedback at both devices, microphone denial and absent-peer retry. Physical phone audio performance still needs device testing.
