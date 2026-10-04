@@ -1,4 +1,4 @@
-# SonicBeam Lab 0.4
+# SonicBeam Lab 0.5
 
 Browser-local acoustic link exploration. No server data path, no uploaded microphone recordings, no dependencies. Static entry: dist/index.html.
 
@@ -47,3 +47,9 @@ The protocol harness additionally verifies one-click receiver setup, one-click s
 The mobile layout follows the supplied SonicBeam mockup: a warm white background, centered waveform wordmark, a large teal start button with role-specific SVG icon, a receiver phone-placement illustration, and a sender goodput-by-frequency card. All built-in interface labels and runtime messages are English. Detailed controls stay inside Advanced settings. Stop appears while audio is opening or active. Empty charts show axes without simulated data; measured goodput retains the same acoustic protocol and statistics. The layout uses a 480 px maximum width and adapts to small phone screens.
 
 The main button toggles start/stop for both roles. Stopping cancels the active audio source, ACK wait and microphone session. While an asynchronous operation finishes cancelling, Stopping… prevents overlapping restarts; then the same button is ready to start again. Completed measurements remain available.
+
+## Reception diagnostics (0.5)
+
+After starting Receive, the placement guide becomes a live Received data card: last CRC-valid packet type/sequence/length, valid packet count, unique accepted payload bytes, locally played ACK count, ACK queue/play/error status, microphone input level, and current-band FFT peak. Completed text/file content is also visible here. ACK played confirms local playback only; compare the sender ACK_MATCHED event to verify the return path.
+
+Diagnostics is available on both roles with Copy log, Download log and Clear. It logs decoder preambles and CRC/length failures, ignored/duplicate packets, ACK attempts/playback errors, sender retries/timeouts and matching, sample rate, requested/current band, microphone processing settings and audio lifecycle errors. The worklet emits microphone telemetry once a second; logs retain the latest 250 events locally and display the latest 80. Exports include both current counters and timestamped events with page-session identifiers. No raw audio or message/file contents are stored in diagnostic events. Physical two-device failures still require comparing both devices’ reports.
